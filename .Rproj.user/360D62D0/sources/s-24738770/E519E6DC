@@ -3,7 +3,7 @@
     "path": "~/R/heardle/hurdle/app.R",
     "project_path": "app.R",
     "type": "r_source",
-    "hash": "726993380",
+    "hash": "4276968291",
     "contents": "",
     "dirty": false,
     "created": 1651146688946.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "44,4",
-        "scrollLine": "30"
+        "cursorPosition": "16,62",
+        "scrollLine": "8"
     },
     "folds": "",
-    "lastKnownWriteTime": 1651146775,
+    "lastKnownWriteTime": 1651147007,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1651146775315,
+    "last_content_update": 1651147007876,
     "read_only": false,
     "read_only_alternatives": []
 }

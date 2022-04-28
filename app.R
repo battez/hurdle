@@ -13,7 +13,9 @@ offset = 6 # list seems to be out by 6 as of Apr 28th 2022!
 gs4_deauth()
 
 
-# get metadata on the public 'deaths' spreadsheet
+# get  public 'previous wordles' spreadsheet
+# repurposed list taken from a medium blog , credit - Owen Yin
+# https://medium.com/@owenyin/here-lies-wordle-2021-2027-full-answer-list-52017ee99e86
 df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
   
 previous_w <- df %>%
