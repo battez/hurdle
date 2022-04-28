@@ -1,0 +1,26 @@
+{
+    "id": "E519E6DC",
+    "path": "~/R/heardle/hurdle/app.R",
+    "project_path": "app.R",
+    "type": "r_source",
+    "hash": "726993380",
+    "contents": "",
+    "dirty": false,
+    "created": 1651146688946.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "44,4",
+        "scrollLine": "30"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1651146775,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1651146775315,
+    "read_only": false,
+    "read_only_alternatives": []
+}
