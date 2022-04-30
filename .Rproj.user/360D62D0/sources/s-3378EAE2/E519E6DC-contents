@@ -46,7 +46,8 @@ ui <- fluidPage(
 
         # Show word (i.e. wordle previous answer)
         mainPanel(
-          textOutput("value_range")
+          textOutput("value_range"),
+          dataTableOutput("show")
         )
     )
 )
@@ -78,9 +79,13 @@ server <- function(input, output, session) {
   print(head(previous_w))
   
   
-  #session$list <- slice(previous_w, input$range)
+  
   output$value_range <- renderText({ 
     paste(input$range, " day(s) ago")
+  })
+  
+  output$show <- renderDataTable({ 
+    slice(previous_w, 1:input$range)
   })
   
   
