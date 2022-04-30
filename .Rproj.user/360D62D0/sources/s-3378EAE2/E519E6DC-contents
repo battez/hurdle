@@ -1,9 +1,17 @@
 # extremely basic shiny app by Luke Barker 2022.
 library(shiny)
+library(shinyWidgets)
+library(rsconnect)
+
 
 # Define UI for application 
 ui <- fluidPage(
-
+    tags$head(tags$style('
+     body {
+        font-family: "Helvetica Neue"; 
+        font-style: bold;}'
+    )),
+  
     # Application intro
     intro_panel <- tabPanel(
       "About",
@@ -25,27 +33,30 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
+          sliderInput("range", 
+                      label = "How far back to go?",
+                      min = 0, max = 100, value = c(1))
+          # noUiSliderInput(
+          #   inputId = "noui1",
+          #   min = 0, max = 50,
+          #   value = 0
+          # ),
+          
         ),
 
-        # Show a plot of the generated distribution
+        # Show word (i.e. wordle previous answer)
         mainPanel(
-           
+          textOutput("value_range")
         )
     )
 )
 
 # Define server logic required to get our data
-server <- function(input, output) {
+server <- function(input, output, session) {
 
   library(googlesheets4)
   library(tidyverse)
   library(lubridate)
-  
   
   today <- today(tzone="UTC")
   offset = 6 # wordle list seems to be out by 6 as of Apr 28th 2022!
@@ -66,14 +77,13 @@ server <- function(input, output) {
   
   print(head(previous_w))
   
-    # output$distPlot <- renderPlot({
-    #     # generate bins based on input$bins from ui.R
-    #     x    <- faithful[, 2]
-    #     bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    # 
-    #     # draw the histogram with the specified number of bins
-    #     hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    # })
+  
+  #session$list <- slice(previous_w, input$range)
+  output$value_range <- renderText({ 
+    paste(input$range, " day(s) ago")
+  })
+  
+  
 }
 
 # Run the application 
