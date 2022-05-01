@@ -2,16 +2,14 @@
 library(shiny)
 library(shinyWidgets)
 library(rsconnect)
-
+library(googlesheets4)
+library(tidyverse)
+library(lubridate)
+library(DT)
 
 
 # Define server logic required to get our data
 server <- function(input, output, session) {
-  
-  library(googlesheets4)
-  library(tidyverse)
-  library(lubridate)
-  library(DT)
   
   today <- today(tzone="UTC")
   offset <- 8 # wordle list seems to be out by 6 as of Apr 28th 2022!
@@ -36,11 +34,26 @@ server <- function(input, output, session) {
     mutate(date=format(date, format="%a %d %B")) %>%
     relocate(word)
     
-  # this seems probelmatic :/ 
-  #global_test <<- dim(previous_w)[1] 
+  
+  max_slider <- dim(previous_w)[1] 
+  
+  output$slider <- renderUI(
+    noUiSliderInput(
+      inputId = "range",
+      color="#008000",
+      label = "Select number of previous days",
+      min=0, max=max_slider,
+      step=1,
+      format=wNumbFormat(decimals=0),
+      width = "50%", height = "300px",
+      value = c(7),
+      orientation = "vertical"
+    )
+  )
+    
   
   output$value_range <- renderText({ 
-    paste("showing past ", input$range, " day(s) answers")
+    paste("showing past ", input$range, " day(s) solutions")
   })
   
   ## hack the data table to have no headings
@@ -82,9 +95,9 @@ ui <- fluidPage(
     
     titlePanel("Wordle words so far..."),
     
-    
-    p("This is just a best attempt at listing out wordle answers from days before today, to be spoiler-free."),
-    p(a(href = "https://www.nytimes.com/games/wordle/index.html", "Play Wordle at NY Times today"))
+    p("Browse the previous wordles' solutions. Updates daily."),
+    p(a(href = "https://www.nytimes.com/games/wordle/index.html", 
+        "Play Wordle at NY Times today"))
   ),
   
   
@@ -94,18 +107,7 @@ ui <- fluidPage(
     
     position="left",
     sidebarPanel(
-      
-      noUiSliderInput(
-        inputId = "range",
-        color="#008000",
-        label = "How far back to go?",
-        min=0, max=100,
-        step=1,
-        format=wNumbFormat(decimals=0),
-        width = "35%", height = "300px",
-        value = c(7),
-        orientation = "vertical"
-      ),
+      uiOutput("slider"),
       
     ),
     
