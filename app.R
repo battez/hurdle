@@ -4,67 +4,10 @@ library(shinyWidgets)
 library(rsconnect)
 
 
-# Define UI for application 
-ui <- fluidPage(
-    tags$head(tags$style(
-    'body {
-        font-family: "Helvetica Neue", sans-serif !important; 
-        font-weight: bold;
-      }
-      .noUi-connects{background-color:#ffc425;}'
-                         
-    )),
-  
-    # Application intro
-    intro_panel <- tabPanel(
-      "About",
-      
-      titlePanel("Wordle words so far..."),
-      
-
-      p("This is just a best attempt at listing out wordle answers from days before today, to be spoiler-free."),
-      p(a(href = "https://www.nytimes.com/games/wordle/index.html", "Play Wordle at NY Times today"))
-    ),
-    
-    
-    ## TODO: swap out the below boilerplate app with output of Words in 
-    ## a useable format
-    
-    # TODO: sidebar
-    # dropdown choosing how far back to show
-    
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        
-        position="left",
-        sidebarPanel(
-          
-          noUiSliderInput(
-            inputId = "range",
-            color="#008000",
-            label = "How far back to go?",
-            min = 0, max = global_rows,
-            step=1,
-            format=wNumbFormat(decimals=0),
-            width = "35%", height = "300px",
-            value = c(7),
-            orientation = "vertical"
-          ),
-          
-        ),
-
-        # Show previous words (i.e. wordle previous answer)
-        mainPanel(
-          
-          textOutput("value_range"),
-          dataTableOutput("show")
-        )
-    )
-)
 
 # Define server logic required to get our data
 server <- function(input, output, session) {
-
+  
   library(googlesheets4)
   library(tidyverse)
   library(lubridate)
@@ -72,7 +15,6 @@ server <- function(input, output, session) {
   
   today <- today(tzone="UTC")
   offset <- 8 # wordle list seems to be out by 6 as of Apr 28th 2022!
-  global_rows <- NULL
   
   # use a word list saved on google spreadsheet:
   gs4_deauth()
@@ -82,7 +24,7 @@ server <- function(input, output, session) {
   # credit - https://medium.com/@owenyin/
   df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
   
-  
+
   # TODO: possibly remove * entries and reflow the date range of the indexes 
   # 
   # sort into date order then make these readable for the Shiny display
@@ -94,9 +36,8 @@ server <- function(input, output, session) {
     mutate(date=format(date, format="%a %d %B")) %>%
     relocate(word)
     
-  #browser()
-  
-  global_rows <<- dim(previous_w)[1] 
+  # this seems probelmatic :/ 
+  #global_test <<- dim(previous_w)[1] 
   
   output$value_range <- renderText({ 
     paste("showing past ", input$range, " day(s) answers")
@@ -121,5 +62,60 @@ server <- function(input, output, session) {
   
 }
 
+
+# Define UI for application 
+ui <- fluidPage(
+  
+  
+  tags$head(tags$style(
+    'body {
+        font-family: "Helvetica Neue", sans-serif !important; 
+        font-weight: bold;
+      }
+      .noUi-connects{background-color:#ffc425;}'
+    
+  )),
+  
+  # Application intro
+  intro_panel <- tabPanel(
+    "About",
+    
+    titlePanel("Wordle words so far..."),
+    
+    
+    p("This is just a best attempt at listing out wordle answers from days before today, to be spoiler-free."),
+    p(a(href = "https://www.nytimes.com/games/wordle/index.html", "Play Wordle at NY Times today"))
+  ),
+  
+  
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    
+    position="left",
+    sidebarPanel(
+      
+      noUiSliderInput(
+        inputId = "range",
+        color="#008000",
+        label = "How far back to go?",
+        min=0, max=100,
+        step=1,
+        format=wNumbFormat(decimals=0),
+        width = "35%", height = "300px",
+        value = c(7),
+        orientation = "vertical"
+      ),
+      
+    ),
+    
+    # Show previous words (i.e. wordle previous answer)
+    mainPanel(
+      
+      textOutput("value_range"),
+      dataTableOutput("show")
+    )
+  )
+)
 # Run the application 
 shinyApp(ui = ui, server = server)
