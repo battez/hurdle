@@ -1,4 +1,6 @@
 # extremely basic shiny app by Luke Barker 2022.
+# a similar PHP version of this exists elsewhere: 
+# https://www.stockq.org/life/wordle-answers.php !
 library(shiny)
 library(shinyWidgets)
 library(rsconnect)
@@ -12,7 +14,7 @@ library(DT)
 server <- function(input, output, session) {
   
   today <- today(tzone="UTC")
-  offset <- 8 # wordle list seems to be out by 6 as of Apr 28th 2022!
+  offset <- 8 # wordle list seems to be out by ?? as of Apr 28th 2022!
   
   # use a word list saved on google spreadsheet:
   gs4_deauth()
@@ -23,19 +25,39 @@ server <- function(input, output, session) {
   df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
   
 
+  
   # TODO: possibly remove * entries and reflow the date range of the indexes 
   # 
   # sort into date order then make these readable for the Shiny display
   previous_w <- df %>%
     select(date, word) %>% 
+    # find yesterdays date and remove everything after it
     mutate(date=as_date(mdy(date), format="%Y-%m-%d") - days(offset) )  %>%
     filter(date < today) %>%
+    # filter out the NY times altered words
+    filter(nchar(word) > 3) %>%
     arrange(desc(date)) %>%
-    mutate(date=format(date, format="%a %d %B")) %>%
     relocate(word)
     
+  # reflow the dates index as there are gaps now:
+  # make a new descending date index
+  rows <- nrow(previous_w)
+  date_index <- vector()
+  for (i in 1:(rows)) {
+    date_index <- append(date_index, today - days(i))
+  }
   
-  max_slider <- dim(previous_w)[1] 
+  # add this column with the official wordle number: 
+  wordle_nos <- rows - as.numeric(rownames(previous_w))
+  
+  ## reindex our data table for nice displaying
+  previous_w <- previous_w %>%
+    mutate(date=format(date_index, format="%a %d %B")) %>%
+    mutate(wordle=as.character(wordle_nos))
+    
+  
+  # set length of slider to no. of words there have been up until today
+  max_slider <- rows 
   
   output$slider <- renderUI(
     noUiSliderInput(
@@ -71,6 +93,12 @@ server <- function(input, output, session) {
     )
     
   )
+  
+  # some summary stats ?
+  # library(stringr)
+  # library(tidytext)
+  # summary <- previous_w %>% 
+  #   mutate(first=x) %>%
   
   
 }
