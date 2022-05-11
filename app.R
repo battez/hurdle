@@ -8,7 +8,8 @@ library(googlesheets4)
 library(tidyverse)
 library(lubridate)
 library(DT)
-
+library(stringr)
+library(tidytext)
 
 # Define server logic required to get our data
 server <- function(input, output, session) {
@@ -40,6 +41,7 @@ server <- function(input, output, session) {
     relocate(word)
     
   # reflow the dates index as there are gaps now:
+  
   # make a new descending date index
   rows <- nrow(previous_w)
   date_index <- vector()
@@ -47,7 +49,7 @@ server <- function(input, output, session) {
     date_index <- append(date_index, today - days(i))
   }
   
-  # add this column with the official wordle number: 
+  # add this column too, with the official wordle number: 
   wordle_nos <- rows - as.numeric(rownames(previous_w))
   
   ## reindex our data table for nice displaying
@@ -78,7 +80,7 @@ server <- function(input, output, session) {
     paste("showing past ", input$range, " day(s) solutions")
   })
   
-  ## hack the data table to have no headings
+  ## hack the displayed data table to have no headings
   output$show <- DT::renderDataTable(
     DT::datatable(
       slice(previous_w, 1:input$range), 
@@ -94,11 +96,12 @@ server <- function(input, output, session) {
     
   )
   
-  # some summary stats ?
-  # library(stringr)
-  # library(tidytext)
+  # TODO: some summary stats ?
+  
   # summary <- previous_w %>% 
   #   mutate(first=x) %>%
+  # plot the word-types from the lexicon
+  # https://stackoverflow.com/questions/55463594/how-to-extract-adjectives-and-adverbs-from-vector-of-text-in-r
   
   
 }
@@ -130,7 +133,7 @@ ui <- fluidPage(
   
   
   
-  # Sidebar with a slider input for number of bins 
+  # Sidebar with a slider input for number of words to show 
   sidebarLayout(
     
     position="left",
@@ -139,13 +142,13 @@ ui <- fluidPage(
       
     ),
     
-    # Show previous words (i.e. wordle previous answer)
+    # Show previous words list (i.e. wordle previous answers)
     mainPanel(
-      
       textOutput("value_range"),
       dataTableOutput("show")
     )
   )
 )
+
 # Run the application 
 shinyApp(ui = ui, server = server)
