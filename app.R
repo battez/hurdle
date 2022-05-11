@@ -98,8 +98,32 @@ server <- function(input, output, session) {
   
   # TODO: some summary stats ?
   
-  # summary <- previous_w %>% 
-  #   mutate(first=x) %>%
+  x <- previous_w$word
+  letters <- vector("character")
+  for (i in 1:5) {
+    exploded <- unlist(lapply(x, substring, i, i))
+    letters <- append(letters, exploded )
+  }
+  
+  freq <- as.data.frame(letters)
+  freq$letters <- as.factor(freq$letters)
+  theme_set(theme_minimal(base_size = 12))
+  output$frequencies <- renderPlot(
+    
+    
+    ggplot(freq, aes(x=letters) ) +
+      geom_histogram(stat="count", alpha=0.5, fill="#002ade" )+
+      labs(title=paste("", nrow(freq)," Letters So Far")) +
+      labs(x="", y="") +
+      
+      theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(), 
+            axis.ticks = element_blank(),
+            axis.line = element_blank(),
+            plot.title = element_text(face="bold", size=14))
+  )
+  
   # plot the word-types from the lexicon
   # https://stackoverflow.com/questions/55463594/how-to-extract-adjectives-and-adverbs-from-vector-of-text-in-r
   
@@ -144,6 +168,7 @@ ui <- fluidPage(
     
     # Show previous words list (i.e. wordle previous answers)
     mainPanel(
+      plotOutput("frequencies"),
       textOutput("value_range"),
       dataTableOutput("show")
     )
