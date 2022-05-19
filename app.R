@@ -2,7 +2,7 @@
 # a similar PHP version of this exists elsewhere: 
 # https://www.stockq.org/life/wordle-answers.php !
 library(shiny)
-library(shinyWidgets)
+
 library(rsconnect)
 library(googlesheets4)
 library(tidyverse)
@@ -11,9 +11,15 @@ library(DT)
 library(stringr)
 library(tidytext)
 
+
+library(shinyWidgets)
+library(shinybusy)
+library(httr)
+
 # Define server logic required to get our data
 server <- function(input, output, session) {
   
+
   today <- today(tzone="UTC")
   offset <- 8 # wordle list seems to be out by ?? as of Apr 28th 2022!
   
@@ -25,23 +31,21 @@ server <- function(input, output, session) {
   # credit - https://medium.com/@owenyin/
   df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
   
-
   
-  # TODO: possibly remove * entries and reflow the date range of the indexes 
-  # 
+  
   # sort into date order then make these readable for the Shiny display
   previous_w <- df %>%
     select(date, word) %>% 
     # find yesterdays date and remove everything after it
     mutate(date=as_date(mdy(date), format="%Y-%m-%d") - days(offset) )  %>%
     filter(date < today) %>%
-    # filter out the NY times altered words
+    
+    # filter out the NY times altered words 
     filter(nchar(word) > 3) %>%
     arrange(desc(date)) %>%
     relocate(word)
     
   # reflow the dates index as there are gaps now:
-  
   # make a new descending date index
   rows <- nrow(previous_w)
   date_index <- vector()
@@ -52,12 +56,11 @@ server <- function(input, output, session) {
   # add this column too, with the official wordle number: 
   wordle_nos <- rows - as.numeric(rownames(previous_w))
   
-  ## reindex our data table for nice displaying
+  # reindex our data table for nice displaying
   previous_w <- previous_w %>%
     mutate(date=format(date_index, format="%a %d %B")) %>%
     mutate(wordle=as.character(wordle_nos))
     
-  
   # set length of slider to no. of words there have been up until today
   max_slider <- rows 
   
@@ -76,28 +79,60 @@ server <- function(input, output, session) {
   )
     
   
-  output$value_range <- renderText({ 
-    paste("showing past ", input$range, " day(s) solutions")
+  # free dictionary api
+  rest_url <- "https://api.dictionaryapi.dev/api/v2/entries/en/"
+  search <- NULL
+  observeEvent(input$tbl_rows_selected, {
+    
+    search <- previous_w[input$tbl_rows_selected, ]$word
+    url <- paste(rest_url, search)
+    
+    # GET request of API
+    req <- httr::GET(url = url)
+    req_parsed <- httr::content(req, type = "application/json", as="text")
+    
+    notify_info(paste(unlist(req_parsed)))
+    
+    
   })
   
+  
+  
+  
+  
+  # display the no. of days the slider has selected to show
+  output$value_range <- renderText({ 
+    paste("showing past ", input$range, " day(s) solutions ")
+  })
+    
+  
+  
+
+  
   ## hack the displayed data table to have no headings
-  output$show <- DT::renderDataTable(
+  headerCallback <- JS(
+    "function(thead, data, start, end, display){",
+    "  $(thead).remove();",
+    "}")
+  
+  output$tbl <- renderDT(
+    ## a table widget is returned >
+    ## used to manipulate ahead of rendering 
     DT::datatable(
       slice(previous_w, 1:input$range), 
-      list(dom = "ft", paging=FALSE, 
+      list(dom = "ft", 
+           paging=FALSE, 
            searchHighlight=TRUE, 
            class="compact stripe",
-           headerCallback = JS(
-             "function(thead, data, start, end, display){",
-             "  $(thead).remove();",
-             "}")
-           ), rownames=FALSE
+           headerCallback = headerCallback
+           ), 
+      rownames=FALSE, 
+      selection="single"
     )
     
   )
   
-  # TODO: some summary stats ?
-  
+  # output some summary stats 
   x <- previous_w$word
   letters <- vector("character")
   for (i in 1:5) {
@@ -124,23 +159,29 @@ server <- function(input, output, session) {
             plot.title = element_text(face="bold", size=14))
   )
   
-  # plot the word-types from the lexicon
+  # TODO: plot the word-types from the lexicon
   # https://stackoverflow.com/questions/55463594/how-to-extract-adjectives-and-adverbs-from-vector-of-text-in-r
   
-  
+  # https://stackoverflow.com/questions/1497539/fitting-a-density-curve-to-a-histogram-in-r
 }
 
 
 # Define UI for application 
 ui <- fluidPage(
-  
+  # loading animation
+  add_busy_bar(color = "#33aa33"),
   
   tags$head(tags$style(
     'body {
         font-family: "Helvetica Neue", sans-serif !important; 
         font-weight: bold;
       }
-      .noUi-connects{background-color:#ffc425;}'
+      .noUi-connects{
+        background-color:#ffc425;
+      }
+    .shiny-output-error, .shiny-output-error:before { 
+        visibility: hidden; 
+    }'
     
   )),
   
@@ -151,8 +192,8 @@ ui <- fluidPage(
     titlePanel("Wordle words so far..."),
     
     p("Browse the previous wordles' solutions. Updates daily."),
-    p(a(href = "https://www.nytimes.com/games/wordle/index.html", 
-        "Play Wordle at NY Times today"))
+    p( a(href = "https://www.nytimes.com/games/wordle/index.html", 
+        "Play Wordle at NY Times today") )
   ),
   
   
@@ -162,15 +203,16 @@ ui <- fluidPage(
     
     position="left",
     sidebarPanel(
-      uiOutput("slider"),
-      
+      uiOutput("slider")
     ),
     
     # Show previous words list (i.e. wordle previous answers)
     mainPanel(
       plotOutput("frequencies"),
+      
       textOutput("value_range"),
-      dataTableOutput("show")
+      
+      DTOutput("tbl")
     )
   )
 )
