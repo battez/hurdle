@@ -16,17 +16,18 @@ library(shinyWidgets)
 library(shinybusy)
 library(httr)
 
+
 # Define server logic required to get our data
 server <- function(input, output, session) {
   
 
   today <- today(tzone="UTC")
-  offset <- 8 # wordle list seems to be out by ?? as of Apr 28th 2022!
+  offset <- 8 # word list seems to be out by ?? as of Apr 28th 2022!
   
   # use a word list saved on google spreadsheet:
   gs4_deauth()
   
-  # get public 'previous wordles' spreadsheet
+  # get public 'previous words' spreadsheet
   # a repurposed list taken from a medium blog, 
   # credit - https://medium.com/@owenyin/
   df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
@@ -53,13 +54,13 @@ server <- function(input, output, session) {
     date_index <- append(date_index, today - days(i))
   }
   
-  # add this column too, with the official wordle number: 
-  wordle_nos <- rows - as.numeric(rownames(previous_w))
+  # add this column too, with the official word number: 
+  answer_nos <- rows - as.numeric(rownames(previous_w))
   
   # reindex our data table for nice displaying
   previous_w <- previous_w %>%
     mutate(date=format(date_index, format="%a %d %B")) %>%
-    mutate(wordle=as.character(wordle_nos))
+    mutate(wordle=as.character(answer_nos))
     
   # set length of slider to no. of words there have been up until today
   max_slider <- rows 
@@ -67,12 +68,14 @@ server <- function(input, output, session) {
   output$slider <- renderUI(
     noUiSliderInput(
       inputId = "range",
-      color="#008000",
-      label = "Select number of previous days",
-      min=0, max=max_slider,
+      color="#f6de62",
+      label="Select number of previous days",
+      min=0, 
+      max=max_slider,
       step=1,
       format=wNumbFormat(decimals=0),
-      width = "50%", height = "300px",
+      width = "50%", 
+      height = "300px",
       value = c(7),
       orientation = "vertical"
     )
@@ -91,13 +94,22 @@ server <- function(input, output, session) {
     req <- httr::GET(url = url)
     req_parsed <- httr::content(req, type = "application/json", as="text")
     
-    notify_info(paste(unlist(req_parsed)))
+    # options described at https://notiflix.github.io/notify
+    notify_success(paste(unlist(req_parsed)), 
+                config_notify(width="460px", 
+                              fontSize="16px",
+                              background="#325f7e",
+                              notiflixIconColor="#ffcccc",
+                              showOnlyTheLastOne=TRUE,
+                              fontFamily="Helvetica", 
+                              opacity=0.9,
+                              closeButton=TRUE
+                              ),
+                position="center-top"
+                )
     
     
   })
-  
-  
-  
   
   
   # display the no. of days the slider has selected to show
@@ -105,9 +117,9 @@ server <- function(input, output, session) {
     paste("showing past ", input$range, " day(s) solutions ")
   })
     
-  
-  
 
+  
+  
   
   ## hack the displayed data table to have no headings
   headerCallback <- JS(
@@ -147,7 +159,7 @@ server <- function(input, output, session) {
     
     
     ggplot(freq, aes(x=letters) ) +
-      geom_histogram(stat="count", alpha=0.5, fill="#002ade" )+
+      geom_histogram(stat="count", alpha=0.8, fill="#ffa66b" )+
       labs(title=paste("", nrow(freq)," Letters So Far")) +
       labs(x="", y="") +
       
@@ -156,6 +168,7 @@ server <- function(input, output, session) {
               panel.border = element_blank(), 
             axis.ticks = element_blank(),
             axis.line = element_blank(),
+            axis.text=element_text(face="bold", size=13),
             plot.title = element_text(face="bold", size=14))
   )
   
@@ -165,11 +178,13 @@ server <- function(input, output, session) {
   # https://stackoverflow.com/questions/1497539/fitting-a-density-curve-to-a-histogram-in-r
 }
 
+src <- "//ssl.gstatic.com/dictionary/static/sounds/20200429/pastel--_gb_1.mp3"
 
 # Define UI for application 
 ui <- fluidPage(
+  
   # loading animation
-  add_busy_bar(color = "#33aa33"),
+  add_busy_bar(color = "#ff6b08", height="10px", centered=TRUE),
   
   tags$head(tags$style(
     'body {
@@ -177,23 +192,26 @@ ui <- fluidPage(
         font-weight: bold;
       }
       .noUi-connects{
-        background-color:#ffc425;
+        background-color:#9cccd6;
       }
+      
     .shiny-output-error, .shiny-output-error:before { 
         visibility: hidden; 
     }'
     
   )),
   
+  
+  
   # Application intro
   intro_panel <- tabPanel(
     "About",
     
-    titlePanel("Wordle words so far..."),
+    titlePanel("Pastle"),
     
-    p("Browse the previous wordles' solutions. Updates daily."),
-    p( a(href = "https://www.nytimes.com/games/wordle/index.html", 
-        "Play Wordle at NY Times today") )
+    p("Browse the past solutions. Updates daily. ", 
+      a(href="https://www.nytimes.com/games/wordle/index.html", 
+        "Play today.", title="play todays puzzle") )
   ),
   
   
@@ -204,11 +222,14 @@ ui <- fluidPage(
     position="left",
     sidebarPanel(
       uiOutput("slider")
+      
     ),
     
-    # Show previous words list (i.e. wordle previous answers)
+    # Show previous words list (i.e. previous answers)
     mainPanel(
       plotOutput("frequencies"),
+
+      tags$audio(src=src, type="audio/mp3", autoplay=F, controls=F),
       
       textOutput("value_range"),
       
