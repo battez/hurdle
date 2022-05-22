@@ -98,10 +98,29 @@ server <- function(input, output, session) {
     # wrangle the nested JSON into something usable (flattened dataframe)
     result <- map(req_parsed, fromJSON)
     result <- unlist(result)
+    
     ## tidyr spread the keys out
     df <- data.frame(keys=names(result), vals=result, row.names=NULL) %>%
-      pivot_wider(names_from = keys, values_from = vals)
-    
+      distinct() %>% # used in case there are duplicates in rows
+      pivot_wider(names_from=keys, values_from=vals)
+      
+
+    meanings <- df %>%
+      select(starts_with("meanings.definitions.definition")) %>%
+      as_tibble() %>%
+      unnest(cols = everything())
+      
+      
+    src = NULL  
+    if("phonetics.audio" %in% names(df)) {
+      src =  df$phonetics.audio[1]
+       
+    } else if ("phonetics.audio1" %in% names(df)) {
+      src =  df$phonetics.audio1[1]
+    } else {
+      src = ""
+    }
+    # 
     browser()
     
     # options described at https://notiflix.github.io/notify
