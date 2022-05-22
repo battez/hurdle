@@ -15,6 +15,7 @@ library(tidytext)
 library(shinyWidgets)
 library(shinybusy)
 library(httr)
+library(jsonlite)
 
 
 # Define server logic required to get our data
@@ -82,7 +83,7 @@ server <- function(input, output, session) {
   )
     
   
-  # free dictionary api
+  # lookup words to get JSON results from free dictionary api
   rest_url <- "https://api.dictionaryapi.dev/api/v2/entries/en/"
   search <- NULL
   observeEvent(input$tbl_rows_selected, {
@@ -92,10 +93,19 @@ server <- function(input, output, session) {
     
     # GET request of API
     req <- httr::GET(url = url)
-    req_parsed <- httr::content(req, type = "application/json", as="text")
+    req_parsed <- httr::content(req, type="application/json", as="text")
+
+    # wrangle the nested JSON into something usable (flattened dataframe)
+    result <- map(req_parsed, fromJSON)
+    result <- unlist(result)
+    ## tidyr spread the keys out
+    df <- data.frame(keys=names(result), vals=result, row.names=NULL) %>%
+      pivot_wider(names_from = keys, values_from = vals)
+    
+    browser()
     
     # options described at https://notiflix.github.io/notify
-    notify_success(paste(unlist(req_parsed)), 
+    notify_success(req_parsed$word, 
                 config_notify(width="460px", 
                               fontSize="16px",
                               background="#325f7e",
