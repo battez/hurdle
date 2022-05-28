@@ -21,7 +21,6 @@ library(jsonlite)
 # Define server logic required to get our data
 server <- function(input, output, session) {
   
-
   today <- today(tzone="UTC")
   offset <- 8 # word list seems to be out by ?? as of Apr 28th 2022!
   
@@ -32,8 +31,6 @@ server <- function(input, output, session) {
   # a repurposed list taken from a medium blog, 
   # credit - https://medium.com/@owenyin/
   df <- read_sheet("https://docs.google.com/spreadsheets/d/1vWiEdagCYtBq-sOrQ6UfWglQwRFkdAIxiV_Hhl_TDE8/edit?usp=sharing")
-  
-  
   
   # sort into date order then make these readable for the Shiny display
   previous_w <- df %>%
@@ -89,7 +86,7 @@ server <- function(input, output, session) {
   observeEvent(input$tbl_rows_selected, {
     
     search <- previous_w[input$tbl_rows_selected, ]$word
-    url <- paste(rest_url, search)
+    url <- paste0(rest_url, search)
     
     # GET request of API
     req <- httr::GET(url = url)
@@ -99,56 +96,53 @@ server <- function(input, output, session) {
     result <- map(req_parsed, fromJSON)
     result <- unlist(result)
     
-    ## tidyr spread the keys out
+    ## tidyr put back into a tibble for handiness
     df <- data.frame(keys=names(result), vals=result, row.names=NULL) %>%
       distinct() %>% # used in case there are duplicates in rows
-      pivot_wider(names_from=keys, values_from=vals)
+      pivot_wider(names_from=keys, values_from=vals, values_fn=list) #
       
-
+    
+    browser("debug")
     meanings <- df %>%
       select(starts_with("meanings.definitions.definition")) %>%
-      as_tibble() %>%
+      as_tibble() %>% 
       unnest(cols = everything())
       
-      
-    src = NULL  
-    if("phonetics.audio" %in% names(df)) {
-      src =  df$phonetics.audio[1]
-       
-    } else if ("phonetics.audio1" %in% names(df)) {
-      src =  df$phonetics.audio1[1]
-    } else {
-      src = ""
-    }
-    # 
-    browser()
+    # we will update the <audio> URL / src
+    new_src = NULL  
+    ## for testing jquery : (will need to pull from JSON better below)
+    # new_src <- result['phonetics.audio1']
     
+    
+    if("phonetics.audio" %in% names(df)) {
+      new_src = df$phonetics.audio[1]
+    } else if ("phonetics.audio1" %in% names(df)) {
+      new_src = df$phonetics.audio1[1]
+    } else {
+      new_src = ""
+    }
+    output$out <- renderText(new_src) 
+
     # options described at https://notiflix.github.io/notify
-    notify_success(req_parsed$word, 
-                config_notify(width="460px", 
+    notify_success(result['word'], 
+                config_notify( width="460px", 
                               fontSize="16px",
                               background="#325f7e",
                               notiflixIconColor="#ffcccc",
                               showOnlyTheLastOne=TRUE,
                               fontFamily="Helvetica", 
                               opacity=0.9,
-                              closeButton=TRUE
-                              ),
-                position="center-top"
+                              closeButton=TRUE),
+                  position="center-top"
                 )
-    
-    
+   
   })
-  
   
   # display the no. of days the slider has selected to show
   output$value_range <- renderText({ 
     paste("showing past ", input$range, " day(s) solutions ")
   })
     
-
-  
-  
   
   ## hack the displayed data table to have no headings
   headerCallback <- JS(
@@ -251,18 +245,23 @@ ui <- fluidPage(
     position="left",
     sidebarPanel(
       uiOutput("slider")
-      
+     
     ),
     
     # Show previous words list (i.e. previous answers)
     mainPanel(
+      textOutput("out"),
+      tags$audio(src=src, type="audio/mp3", autoplay=F, controls=F, id="a"), 
+      tags$script(" $('#out').on('DOMSubtreeModified', 
+                      function(){
+                        $('#a').attr('src', $(this).text() ); 
+                      } )"),
+      
       plotOutput("frequencies"),
-
-      tags$audio(src=src, type="audio/mp3", autoplay=F, controls=F),
       
       textOutput("value_range"),
+      DTOutput("tbl") 
       
-      DTOutput("tbl")
     )
   )
 )
