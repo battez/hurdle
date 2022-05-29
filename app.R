@@ -90,51 +90,58 @@ server <- function(input, output, session) {
     
     # GET request of API
     req <- httr::GET(url = url)
-    req_parsed <- httr::content(req, type="application/json", as="text")
-
-    # wrangle the nested JSON into something usable (flattened dataframe)
-    result <- map(req_parsed, fromJSON)
-    result <- unlist(result)
+    req_parsed <- httr::content(req, type="application/json", 
+                                as="text", encoding="UTF-8")
+    jdata <- fromJSON(req_parsed)
+    tbl_flat <- as_data_frame(flatten(jdata))
+    result <- unlist(tbl_flat$phonetics)
     
-    ## tidyr put back into a tibble for handiness
+    ## printout the meanings 
+    # wrangle the nested JSON into something usable (flattened dataframe)
+    dfm <- tbl_flat[["meanings"]][[1]][["definitions"]][[1]]
+    
+    # found on stackoverflow:
+    vectorBulletList <- function(vector) {
+      if(length(vector > 1)) {
+        paste0("<ul><li>", 
+               paste0( paste0(vector), collapse = "</li><li>"),
+               "</li></ul>")   
+      }
+    }
+    output$meanings <- renderUI(HTML(vectorBulletList(dfm$definition)))
+    
+    
+    # we  update the HTML <audio> URL / src
+    new_src = NULL 
+    ## tidyr parse the JSON
     df <- data.frame(keys=names(result), vals=result, row.names=NULL) %>%
       distinct() %>% # used in case there are duplicates in rows
-      pivot_wider(names_from=keys, values_from=vals, values_fn=list) #
-      
-    
-    browser("debug")
-    meanings <- df %>%
-      select(starts_with("meanings.definitions.definition")) %>%
-      as_tibble() %>% 
-      unnest(cols = everything())
-      
-    # we will update the <audio> URL / src
-    new_src = NULL  
-    ## for testing jquery : (will need to pull from JSON better below)
-    # new_src <- result['phonetics.audio1']
-    
-    
-    if("phonetics.audio" %in% names(df)) {
-      new_src = df$phonetics.audio[1]
-    } else if ("phonetics.audio1" %in% names(df)) {
-      new_src = df$phonetics.audio1[1]
+      pivot_wider(names_from=keys, values_from=vals, values_fn=list) 
+     
+   
+    if("audio" %in% names(df)) {
+      new_src = unlist( df$audio[1] )
+    } else if ("audio1" %in% names(df)) {
+      new_src = unlist(df$audio1[1])
     } else {
       new_src = ""
     }
+    
     output$out <- renderText(new_src) 
+  
 
     # options described at https://notiflix.github.io/notify
-    notify_success(result['word'], 
-                config_notify( width="460px", 
-                              fontSize="16px",
-                              background="#325f7e",
-                              notiflixIconColor="#ffcccc",
-                              showOnlyTheLastOne=TRUE,
-                              fontFamily="Helvetica", 
-                              opacity=0.9,
-                              closeButton=TRUE),
-                  position="center-top"
-                )
+    # notify_success(result['word'], 
+    #             config_notify( width="460px", 
+    #                           fontSize="16px",
+    #                           background="#325f7e",
+    #                           notiflixIconColor="#ffcccc",
+    #                           showOnlyTheLastOne=TRUE,
+    #                           fontFamily="Helvetica", 
+    #                           opacity=0.9,
+    #                           closeButton=FALSE),
+    #               position="center-top"
+    #             )
    
   })
   
@@ -201,7 +208,7 @@ server <- function(input, output, session) {
   # https://stackoverflow.com/questions/1497539/fitting-a-density-curve-to-a-histogram-in-r
 }
 
-src <- "//ssl.gstatic.com/dictionary/static/sounds/20200429/pastel--_gb_1.mp3"
+
 
 # Define UI for application 
 ui <- fluidPage(
@@ -217,7 +224,8 @@ ui <- fluidPage(
       .noUi-connects{
         background-color:#9cccd6;
       }
-      
+      tr td {cursor:pointer }
+      #out {visibility:hidden;}
     .shiny-output-error, .shiny-output-error:before { 
         visibility: hidden; 
     }'
@@ -250,16 +258,31 @@ ui <- fluidPage(
     
     # Show previous words list (i.e. previous answers)
     mainPanel(
+      
       textOutput("out"),
-      tags$audio(src=src, type="audio/mp3", autoplay=F, controls=F, id="a"), 
-      tags$script(" $('#out').on('DOMSubtreeModified', 
+      tags$audio(src="", type="audio/mp3", autoplay=F, controls=F, id="a"), 
+      tags$script(" 
+                  $(document).ready(function(){
+                    $('#a').attr('data-src', 'https://api.dictionaryapi.dev/api/v2/entries/en/PASTEL'); 
+                    $('#out').on('DOMSubtreeModified', 
+                      
                       function(){
-                        $('#a').attr('src', $(this).text() ); 
-                      } )"),
+                        
+      
+                        if(!$(this).text()) {
+                        
+                          $('#a').attr('src', $('#a').attr('data-src') );
+                        } else {
+                          $('#a').attr('src', $(this).text() );
+                        }
+                      } )})"),
+      
+      uiOutput("meanings"),
       
       plotOutput("frequencies"),
       
       textOutput("value_range"),
+      
       DTOutput("tbl") 
       
     )
